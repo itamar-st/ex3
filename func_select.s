@@ -14,12 +14,15 @@
         .quad .L59 #Op = 9
         .quad .L60 #Op = 10
         .quad .DEF #Op = 11
-    format_input_int:  .string " %d"
-    format_input_str:  .string " %s"
+    format_input_int:   .string " %d"
+    format_input_str:   .string " %s"
     format_input_char:  .string " %c"
-    format_print:   .string "(%s,%s)"
-    pstrlen_msg:    .string "first pstring length: %d, second pstring length: %d\n"
-    replaceChar_msg:.string "old char: %c, new char: %c, first string: %s, second string: %s\n"
+    format_input_2char: .string " %c %c"
+    format_print:       .string "(%s,%s)"
+    pstrlen_msg:        .string "first pstring length: %d, second pstring length: %d\n"
+    replaceChar_msg:    .string "old char: %c, new char: %c, first string: %s, second string: %s\n"
+    pstrijcpy_msg:      .string "length: %d, string: %s\n"
+
 
 
     .text
@@ -60,6 +63,7 @@ run_main:
     imulq   $-16, %rax #align for 16 addresses
     addq    %rax, %rsp  # open more place on the stack acordingto the number entered
     movq    %rax, %r13     #save the num of byts for future use
+    addq    %r12, %r13
     movq    %rbx, (%rbp, %r13,1)    #save the input int
 #second str
     movq    $format_input_str, %rdi    #format in first arg
@@ -112,20 +116,16 @@ run_func:
         subq    $16, %rsp   #create space for 1 arg
 
         call    pstrlen
-        movq    %rax, -8(%rbp)
+        movq    %rax, -8(%rbp) #save first len
         movq    %rsi, %rdi
         call    pstrlen
-        movq    %rax, -16(%rbp)
-        movq    -8(%rbp), %rsi
+
+        movq    %rax, -16(%rbp) #save second len
+        movq    -8(%rbp), %rsi  #args pointing to mem
         movq    -16(%rbp), %rdx
-        #xorq    %rdx, %rdx  #rdx = 0
-        #save the first byte (the len) into last byte of rdx
-        #movb    (%rsi), %dl  #save the first byte (the len) into last byte of rdx
-        #xorq    %rsi, %rsi  #rsi = 0
-        #movb    (%rdi), %sil  #save the first byte (the len) into last byte of rsi
         movq    $pstrlen_msg, %rdi     #format in first arg
-        #xorq    %rax, %rax      #rax = 0
         call    printf
+
         movq    %rbp, %rsp  #finish
         popq    %rbp        #finish
         xorq    %rax, %rax  #finish
@@ -141,20 +141,16 @@ run_func:
         movq    %rdi, %r12
         movq    %rsi, %r13
 
-    #first len
-        movq    $format_input_char, %rdi    #format in first arg
+    #first char
+        movq    $format_input_2char, %rdi    #format in first arg
         leaq    -24(%rbp), %rsi  #location to save in second arg
-        xorq    %rax,%rax  #rax=0
-        call    scanf
-    #second len
-        movq    $format_input_char, %rdi    #format in first arg
-        leaq    -32(%rbp), %rsi  #location to save in second arg
+        leaq    -32(%rbp), %rdx  #location to save in second arg
         xorq    %rax,%rax  #rax=0
         call    scanf
 
-        movq    %r12, %rdi
+        movq    %r12, %rdi  #str in first arg
         leaq    -24(%rbp), %rsi  #location to save in second arg
-        leaq    -32(%rbp), %rdx  #location to save in second arg
+        leaq    -32(%rbp), %rdx  #location to save in third arg
         call    replaceChar
         movq    %rax, %r12
 
@@ -167,14 +163,54 @@ run_func:
         leaq    1(%r12), %rcx
         leaq    1(%rax), %r8
         call    printf
-        movq    -8(%rbp), %r12
-        movq    -16(%rbp), %r13
+        movq    -8(%rbp), %r12  #pop
+        movq    -16(%rbp), %r13 #pop
         movq    %rbp, %rsp  #finish
         popq    %rbp        #finish
         xorq    %rax, %rax  #finish
         jmp     .L_fin
     .L53:
-        ret
+        pushq   %rbp    #setup
+        movq    %rsp, %rbp  #setup
+        subq    $32, %rsp   #create space for 1 arg
+        movq    %r12, -8(%rbp)
+        movq    %r13, -16(%rbp)
+        movq    %rdi, %r12
+        movq    %rsi, %r13
+
+        movq    $format_input_int, %rdi    #format in first arg
+        leaq    -24(%rbp), %rsi  #location to save in second arg
+        xorq    %rax,%rax  #rax=0
+        call    scanf
+        #incb    -24(%rbp)
+
+        movq    $format_input_int, %rdi    #format in first arg
+        leaq    -16(%rbp), %rsi  #location to save in second arg
+        xorq    %rax,%rax  #rax=0
+        call    scanf
+        incb    -16(%rbp)
+
+        xorq    %rdx, %rdx
+        movb    -24(%rbp), %dl
+        xorq    %rcx, %rcx
+        movb    -16(%rbp), %cl
+        movq    %r12, %rdi
+        movq    %r13, %rsi
+        call    pstrijcpy
+
+        movq    $pstrijcpy_msg, %rdi
+        xorq    %rsi, %rsi
+        xorq    %rbx, %rbx
+        movb    (%rax), %bl   #location to save in second arg
+        movq    %rbx, -32(%rbp)
+        movq    -32(%rbp), %rsi
+        leaq    1(%rax), %rdx
+        xorq    %rax, %rax
+        call    printf
+        movq    %rbp, %rsp  #finish
+        popq    %rbp        #finish
+        xorq    %rax, %rax  #finish
+        jmp     .L_fin
     .L54:
         ret
     .L55:
@@ -197,8 +233,31 @@ run_func:
 #there are more lables then choosing options but the 5 more lables is faster then using modulu 10
 
 
+    .type pstrijcpy, @function
+pstrijcpy:
+
+#    pushq   %rbp    #setup
+#    movq    %rsp, %rbp  #setup
+#    subq    $32, %rsp   #create space for 1 arg
+
+    movb    %dl, %bl # i=0
+
+    L16:
+        cmpq    %rcx, %rbx  #if i< pstr.len#todo fix!!!!!!
+        jl     L15
+        movq    %rdi, %rax  #set for return
+        ret
+    L15:
+        movb    (%rsi, %rbx, 1), %al    #al = src[i]
+        movb    %al, (%rdi, %rbx, 1) # dest[i] = al
+        incq    %rbx    #i++
+        jmp     L16
 
 
+#    movq    %rbp, %rsp  #finish
+#    popq    %rbp        #finish
+#    xorq    %rax, %rax  #finish
+#    ret
     .type pstrlen, @function
 pstrlen:
         #performing swap between the args
@@ -213,22 +272,22 @@ replaceChar:
     subq    $24, %rsp   #create space for 2 arg
 
 
-    movb    $1, %bl
-    incb    (%rdi)  #not good the change is permenant
+    movb    $1, %bl # i=0
+    incb    (%rdi)  # not good the change is permenant
     L10:
-        movb    (%rdi, %rbx, 1), %al
-        cmpb    %al, (%rsi)
+        movb    (%rdi, %rbx, 1), %al    #al = str[i]
+        cmpb    %al, (%rsi) #cmp str[i] old char
         je      L11
     L12:
-        incq    %rbx
-        cmpb    %bl, (%rdi)
+        incq    %rbx    #i++
+        cmpb    %bl, (%rdi) #if i< pstr.len
         jg     L10
-        movq    %rdi, %rax
+        movq    %rdi, %rax  #set for return
         movq    %rbp, %rsp  #finish
         popq    %rbp        #finish
         ret
 
     L11:
-        movb    (%rdx), %al
+        movb    (%rdx), %al # change chars
         movb    %al, (%rdi, %rbx, 1)
         jmp     L12
