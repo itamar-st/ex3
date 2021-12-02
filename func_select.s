@@ -22,6 +22,8 @@
     pstrlen_msg:        .string "first pstring length: %d, second pstring length: %d\n"
     replaceChar_msg:    .string "old char: %c, new char: %c, first string: %s, second string: %s\n"
     pstrijcpy_msg:      .string "length: %d, string: %s\n"
+    invalid_input:      .string "invalid input!\n"
+
 
 
 
@@ -163,6 +165,7 @@ run_func:
         leaq    1(%r12), %rcx
         leaq    1(%rax), %r8
         call    printf
+
         movq    -8(%rbp), %r12  #pop
         movq    -16(%rbp), %r13 #pop
         movq    %rbp, %rsp  #finish
@@ -182,13 +185,25 @@ run_func:
         leaq    -24(%rbp), %rsi  #location to save in second arg
         xorq    %rax,%rax  #rax=0
         call    scanf
-        #incb    -24(%rbp)
 
         movq    $format_input_int, %rdi    #format in first arg
         leaq    -16(%rbp), %rsi  #location to save in second arg
         xorq    %rax,%rax  #rax=0
         call    scanf
-        incb    -16(%rbp)
+        #incb    -16(%rbp)
+
+        xorq    %rax,%rax  #rax=0
+        movb    -24(%rbp), %al
+        cmpb    %al, (%r12)
+        jl     .L21
+        cmpb    %al, (%r13)
+        jl     .L21
+        xorq    %rax,%rax  #rax=0
+        movb    -16(%rbp), %al
+        cmpb    %al, (%r12)
+        jl     .L21
+        cmpb    %al, (%r13)
+        jl     .L21
 
         xorq    %rdx, %rdx
         movb    -24(%rbp), %dl
@@ -198,6 +213,7 @@ run_func:
         movq    %r13, %rsi
         call    pstrijcpy
 
+        .L23:
         movq    $pstrijcpy_msg, %rdi
         xorq    %rsi, %rsi
         xorq    %rbx, %rbx
@@ -207,10 +223,28 @@ run_func:
         leaq    1(%rax), %rdx
         xorq    %rax, %rax
         call    printf
+
+        movq    $pstrijcpy_msg, %rdi
+        xorq    %rsi, %rsi
+        xorq    %rbx, %rbx
+        movb    (%r13), %bl   #location to save in second arg
+        movq    %rbx, -32(%rbp)
+        movq    -32(%rbp), %rsi
+        leaq    1(%r13), %rdx
+        xorq    %rax, %rax
+        call    printf
+
         movq    %rbp, %rsp  #finish
         popq    %rbp        #finish
         xorq    %rax, %rax  #finish
         jmp     .L_fin
+
+        .L21:
+         movq   $invalid_input, %rdi
+         xorq    %rax,%rax  #rax=0
+         call    printf
+         movq   %r12, %rax
+         jmp    .L23
     .L54:
         ret
     .L55:
@@ -244,7 +278,7 @@ pstrijcpy:
 
     L16:
         cmpq    %rcx, %rbx  #if i< pstr.len#todo fix!!!!!!
-        jl     L15
+        jle     L15
         movq    %rdi, %rax  #set for return
         ret
     L15:
@@ -253,7 +287,7 @@ pstrijcpy:
         incq    %rbx    #i++
         jmp     L16
 
-
+s
 #    movq    %rbp, %rsp  #finish
 #    popq    %rbp        #finish
 #    xorq    %rax, %rax  #finish
