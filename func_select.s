@@ -18,14 +18,11 @@
     format_input_str:   .string " %s"
     format_input_char:  .string " %c"
     format_input_2char: .string " %c %c"
-    format_print:       .string "(%s,%s)"
     pstrlen_msg:        .string "first pstring length: %d, second pstring length: %d\n"
     replaceChar_msg:    .string "old char: %c, new char: %c, first string: %s, second string: %s\n"
     pstrijcpy_msg:      .string "length: %d, string: %s\n"
     invalid_input:      .string "invalid input!\n"
-
-
-
+    pstrijcmp_msg:      .string "compare result: %d\n"
 
     .text
     .globl run_main
@@ -291,7 +288,64 @@ run_func:
         xorq    %rax, %rax  #finish
         jmp     .L_fin
     .L55:
-        ret
+        pushq   %rbp    #setup
+        movq    %rsp, %rbp  #setup
+        subq    $48, %rsp   #create space for 1 arg
+        movq    %r12, -8(%rbp)
+        movq    %r13, -16(%rbp)
+        movq    %rdi, %r12
+        movq    %rsi, %r13
+
+        movq    $format_input_int, %rdi    #format in first arg
+        leaq    -24(%rbp), %rsi  #location to save in second arg
+        xorq    %rax,%rax  #rax=0
+        call    scanf
+
+        movq    $format_input_int, %rdi    #format in first arg
+        leaq    -16(%rbp), %rsi  #location to save in second arg
+        xorq    %rax,%rax  #rax=0
+        call    scanf
+        #incb    -16(%rbp)
+
+        xorq    %rax,%rax  #rax=0
+        movb    -24(%rbp), %al
+        cmpb    %al, (%r12)
+        jl     .LF2
+        cmpb    %al, (%r13)
+        jl     .LF2
+        xorq    %rax,%rax  #rax=0
+        movb    -16(%rbp), %al
+        cmpb    %al, (%r12)
+        jl     .LF2
+        cmpb    %al, (%r13)
+        jl     .LF2
+
+        xorq    %rdx, %rdx
+        movb    -24(%rbp), %dl
+        xorq    %rcx, %rcx
+        movb    -16(%rbp), %cl
+        movq    %r12, %rdi
+        movq    %r13, %rsi
+        call    pstrijcmp
+
+        .LF1:
+            movq    $pstrijcmp_msg, %rdi
+            movq    %rax, -32(%rbp)
+            movq    -32(%rbp), %rsi
+            xorq    %rax, %rax
+            call    printf
+
+            movq    %rbp, %rsp  #finish
+            popq    %rbp        #finish
+            xorq    %rax, %rax  #finish
+            jmp     .L_fin
+
+        .LF2:
+             movq   $invalid_input, %rdi
+             xorq    %rax,%rax  #rax=0
+             call    printf
+             movq   %r12, %rax
+             jmp    .LF1
     .L56:
         ret
     .L57:
@@ -309,42 +363,64 @@ run_func:
 #setting up a table with to hold all the possible numbers
 #there are more lables then choosing options but the 5 more lables is faster then using modulu 10
 
+    .type pstrijcmp, @function
+pstrijcmp:
+        movb    %dl, %bl # i=0
+
+    .L81:
+        cmpb    %cl, %bl  #if i< pstr.len
+        jle     .L82
+        movq    $0, %rax
+        ret
+    .L82:
+        movb    (%rdi, %rbx, 1), %al  # dest[i] = al
+        movb    (%rsi, %rbx, 1), %r8b  # dest[i] = al
+        cmpb    %r8b, %al # al <= 65
+        jl     .L83
+        jg     .L86
+        jmp     .L84
+    .L83:
+        movq    $1, %rax
+        ret
+    .L86:
+        movq    $-1, %rax
+        ret
+    .L84:
+        incq    %rbx    #i++
+        jmp     .L81
+
     .type swapCase, @function
 swapCase:
         movb    $1, %bl # i=0
         movb    (%rdi), %cl
 
-        .L91:
-            cmpb    %cl, %bl  #if i< pstr.len#todo fix!!!!!!
-            jle     .L92
-            movq    %rdi, %rax  #set for return
-            ret
-        .L92:
-            movb    (%rdi, %rbx, 1), %al  # dest[i] = al
-            cmpb    $65, %al # al <= 65
-            jle     .L93
-            cmpb    $90, %al # al>=90
-            jge     .L93
-            addb    $32, %al
-            movb    %al, (%rdi, %rbx, 1) # al = dest[i]
-            jmp     .L94
-        .L93:
-            cmpb    $97, %al # al <97
-            jl     .L94
-            cmpb    $122, %al # al>122
-            jg     .L94
-            subb    $32, %al
-            movb    %al, (%rdi, %rbx, 1) # al = dest[i]
-        .L94:
-            incq    %rbx    #i++
-            jmp     .L91
+    .L91:
+        cmpb    %cl, %bl  #if i< pstr.len#todo fix!!!!!!
+        jle     .L92
+        movq    %rdi, %rax  #set for return
+        ret
+    .L92:
+        movb    (%rdi, %rbx, 1), %al  # dest[i] = al
+        cmpb    $65, %al # al <= 65
+        jle     .L93
+        cmpb    $90, %al # al>=90
+        jge     .L93
+        addb    $32, %al
+        movb    %al, (%rdi, %rbx, 1) # al = dest[i]
+        jmp     .L94
+    .L93:
+        cmpb    $97, %al # al <97
+        jl     .L94
+        cmpb    $122, %al # al>122
+        jg     .L94
+        subb    $32, %al
+        movb    %al, (%rdi, %rbx, 1) # al = dest[i]
+    .L94:
+        incq    %rbx    #i++
+        jmp     .L91
 
     .type pstrijcpy, @function
 pstrijcpy:
-
-#    pushq   %rbp    #setup
-#    movq    %rsp, %rbp  #setup
-#    subq    $32, %rsp   #create space for 1 arg
 
     movb    %dl, %bl # i=0
 
@@ -359,11 +435,6 @@ pstrijcpy:
         incq    %rbx    #i++
         jmp     .L16
 
-
-#    movq    %rbp, %rsp  #finish
-#    popq    %rbp        #finish
-#    xorq    %rax, %rax  #finish
-#    ret
     .type pstrlen, @function
 pstrlen:
         #performing swap between the args
