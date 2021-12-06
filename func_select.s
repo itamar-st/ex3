@@ -215,22 +215,22 @@ run_func:
 
         .L23:
         movq    $pstrijcpy_msg, %rdi
-        xorq    %rsi, %rsi
-        xorq    %rbx, %rbx
-        movb    (%rax), %bl   #location to save in second arg
-        movq    %rbx, -32(%rbp)
-        movq    -32(%rbp), %rsi
-        leaq    1(%rax), %rdx
-        xorq    %rax, %rax
+        xorq    %rsi, %rsi  #rsi = 0
+        xorq    %rbx, %rbx  #rdi = 0
+        movb    (%rax), %bl #location to save in second arg
+        movq    %rbx, -32(%rbp) #location to save in second arg
+        movq    -32(%rbp), %rsi#create free space for the arg
+        leaq    1(%rax), %rdx   #len in first arg
+        xorq    %rax, %rax  #str in second arg
         call    printf
 
         movq    $pstrijcpy_msg, %rdi
         xorq    %rsi, %rsi
         xorq    %rbx, %rbx
-        movb    (%r13), %bl   #location to save in second arg
-        movq    %rbx, -32(%rbp)
-        movq    -32(%rbp), %rsi
-        leaq    1(%r13), %rdx
+        movb    (%r13), %bl     #location to save in second arg
+        movq    %rbx, -32(%rbp) #create free space for the arg
+        movq    -32(%rbp), %rsi #len in first arg
+        leaq    1(%r13), %rdx   #str in second arg
         xorq    %rax, %rax
         call    printf
 
@@ -246,7 +246,50 @@ run_func:
          movq   %r12, %rax
          jmp    .L23
     .L54:
-        ret
+        pushq   %rbp    #setup
+        movq    %rsp, %rbp  #setup
+        subq    $32, %rsp   #create space for 3 arg
+        movq    %r12, -8(%rbp)  #save callee
+        movq    %r13, -16(%rbp)
+        movq    %rdi, %r12
+        movq    %rsi, %r13
+
+        movq    %r12, %rdi  #str in first arg
+        leaq    -24(%rbp), %rsi  #location to save
+        leaq    -32(%rbp), %rdx  #location to save
+        call    swapCase
+        movq    %rax, %r12  #save output
+
+        movq    %r13, %rdi  #str in first arg
+        call    swapCase
+        movq    %rax, %r13  #save output
+
+        movq    $pstrijcpy_msg, %rdi    #format in first arg
+        xorq    %rsi, %rsi  #rsi = 0
+        xorq    %rbx, %rbx  #rbx = 0
+        movb    (%r12), %bl   #location to save in second arg
+        movq    %rbx, -32(%rbp) #create free space for the arg
+        movq    -32(%rbp), %rsi #lenin first arg
+        leaq    1(%r12), %rdx   #str in second arg
+        xorq    %rax, %rax
+        call    printf
+
+        movq    $pstrijcpy_msg, %rdi    #format in first arg
+        xorq    %rsi, %rsi   #rsi = 0
+        xorq    %rbx, %rbx  #rbx = 0
+        movb    (%r13), %bl   #location to save in second arg
+        movq    %rbx, -32(%rbp) #create free space for the arg
+        movq    -32(%rbp), %rsi #len in first arg
+        leaq    1(%r13), %rdx    #str in second arg
+        xorq    %rax, %rax
+        call    printf
+
+        movq    -8(%rbp), %r12  #pop
+        movq    -16(%rbp), %r13 #pop
+        movq    %rbp, %rsp  #finish
+        popq    %rbp        #finish
+        xorq    %rax, %rax  #finish
+        jmp     .L_fin
     .L55:
         ret
     .L56:
@@ -266,6 +309,35 @@ run_func:
 #setting up a table with to hold all the possible numbers
 #there are more lables then choosing options but the 5 more lables is faster then using modulu 10
 
+    .type swapCase, @function
+swapCase:
+        movb    $1, %bl # i=0
+        movb    (%rdi), %cl
+
+        .L91:
+            cmpb    %cl, %bl  #if i< pstr.len#todo fix!!!!!!
+            jle     .L92
+            movq    %rdi, %rax  #set for return
+            ret
+        .L92:
+            movb    (%rdi, %rbx, 1), %al  # dest[i] = al
+            cmpb    $65, %al # al <= 65
+            jle     .L93
+            cmpb    $90, %al # al>=90
+            jge     .L93
+            addb    $32, %al
+            movb    %al, (%rdi, %rbx, 1) # al = dest[i]
+            jmp     .L94
+        .L93:
+            cmpb    $97, %al # al <97
+            jl     .L94
+            cmpb    $122, %al # al>122
+            jg     .L94
+            subb    $32, %al
+            movb    %al, (%rdi, %rbx, 1) # al = dest[i]
+        .L94:
+            incq    %rbx    #i++
+            jmp     .L91
 
     .type pstrijcpy, @function
 pstrijcpy:
@@ -276,18 +348,18 @@ pstrijcpy:
 
     movb    %dl, %bl # i=0
 
-    L16:
+    .L16:
         cmpq    %rcx, %rbx  #if i< pstr.len#todo fix!!!!!!
-        jle     L15
+        jle     .L15
         movq    %rdi, %rax  #set for return
         ret
-    L15:
+    .L15:
         movb    (%rsi, %rbx, 1), %al    #al = src[i]
         movb    %al, (%rdi, %rbx, 1) # dest[i] = al
         incq    %rbx    #i++
-        jmp     L16
+        jmp     .L16
 
-s
+
 #    movq    %rbp, %rsp  #finish
 #    popq    %rbp        #finish
 #    xorq    %rax, %rax  #finish
