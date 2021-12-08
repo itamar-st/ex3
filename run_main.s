@@ -1,3 +1,5 @@
+# 207497769 Itamar Shachen Tov
+
         .file "run_main.s"
         .section .rodata
     format_input_int:   .string " %d"
@@ -53,12 +55,6 @@ run_main:
     leaq    -8(%rbp), %rsi  #location to save in second arg
     xorq    %rax,%rax  #rax=0
     call    scanf
-
-    #movq    $format_print, %rdi     #format in first arg
-    #leaq    1(%rbp, %r12,1), %rsi    #important!! str location in firt arg
-    #leaq    1(%rbp, %r13,1), %rdx    #important!! str location in firt arg
-    #xorq    %rax, %rax      #rax = 0
-    #call    printf
 
     leaq    (%rbp, %r12,1), %rdi    #pstring 1
     leaq    (%rbp, %r13,1), %rsi    #pstring2
